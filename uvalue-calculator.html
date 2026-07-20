@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>U-Value Calculator — ECBC Method</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+  :root{
+    --paper:#f6f4ee;
+    --paper-line:#dcd7c8;
+    --ink:#1c2b3a;
+    --ink-soft:#4b5b6b;
+    --blueprint:#25506e;
+    --blueprint-deep:#122236;
+    --amber:#c2760b;
+    --ok:#2f7a4f;
+    --card:#ffffff;
+    --shadow: 0 1px 0 rgba(28,43,58,0.06);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    background-image:
+      linear-gradient(var(--paper-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--paper-line) 1px, transparent 1px);
+    background-size: 28px 28px;
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+
+  .wrap{max-width:1180px; margin:0 auto; padding:32px 20px 80px;}
+
+  header.title-block{
+    border-bottom: 2px solid var(--ink);
+    padding-bottom:16px;
+    margin-bottom:24px;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  header.title-block .left h1{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 26px;
+    letter-spacing:0.5px;
+    margin:0 0 4px 0;
+    font-weight:700;
+    color:var(--blueprint-deep);
+  }
+  header.title-block .left p{
+    margin:0;
+    color:var(--ink-soft);
+    font-size:13.5px;
+    max-width:560px;
+    line-height:1.5;
+  }
+  header.title-block .stamp{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--blueprint);
+    border:1.5px solid var(--blueprint);
+    padding:6px 10px;
+    border-radius:3px;
+    text-align:right;
+    line-height:1.5;
+    white-space:nowrap;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap:22px;
+  }
+  @media (max-width: 920px){
+    .grid{grid-template-columns:1fr;}
+  }
+
+  .panel{
+    background:var(--card);
+    border:1px solid var(--ink);
+    box-shadow: 3px 3px 0 rgba(28,43,58,0.08);
+    border-radius:2px;
+    padding:20px;
+    margin-bottom:20px;
+  }
+  .panel h2{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:1.2px;
+    color:var(--blueprint);
+    margin:0 0 14px 0;
+    padding-bottom:8px;
+    border-bottom:1px dashed var(--paper-line);
+  }
+
+  /* Toggle for wall/roof */
+  .toggle-row{display:flex; gap:8px; margin-bottom:14px;}
+  .toggle-btn{
+    flex:1;
+    padding:10px 12px;
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:600;
+    font-size:13px;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+    background:var(--paper);
+    border:1.5px solid var(--ink);
+    border-radius:2px;
+    cursor:pointer;
+    color:var(--ink-soft);
+    transition:all .12s ease;
+  }
+  .toggle-btn.active{
+    background:var(--blueprint-deep);
+    color:#fff;
+    border-color:var(--blueprint-deep);
+  }
+
+  .field-row{display:flex; gap:10px; margin-bottom:12px; align-items:end; flex-wrap:wrap;}
+  .field{flex:1; min-width:140px;}
+  label{
+    display:block;
+    font-size:11px;
+    font-family:'IBM Plex Mono', monospace;
+    color:var(--ink-soft);
+    text-transform:uppercase;
+    letter-spacing:0.6px;
+    margin-bottom:4px;
+  }
+  select, input[type=number], input[type=text]{
+    width:100%;
+    padding:8px 9px;
+    border:1.3px solid #b9bfc7;
+    border-radius:3px;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13.5px;
+    background:#fff;
+    color:var(--ink);
+  }
+  select:focus, input:focus{outline:2px solid var(--blueprint); outline-offset:1px;}
+
+  /* Layer list */
+  #layerList{display:flex; flex-direction:column; gap:10px; margin-bottom:14px;}
+  .layer-card{
+    border:1.3px solid #cdd3d9;
+    border-left:4px solid var(--blueprint);
+    border-radius:3px;
+    padding:12px;
+    background:#fbfbf9;
+    position:relative;
+  }
+  .layer-card.airfilm{
+    border-left-color:#9aa7b2;
+    background:repeating-linear-gradient(135deg, #fbfbf9, #fbfbf9 6px, #f1f3f4 6px, #f1f3f4 12px);
+  }
+  .layer-head{
+    display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;
+  }
+  .layer-num{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:#fff;
+    background:var(--blueprint);
+    width:20px; height:20px;
+    border-radius:50%;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    margin-right:8px;
+  }
+  .layer-title{font-size:12.5px; font-weight:600; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; letter-spacing:0.4px;}
+  .icon-btn{
+    background:none; border:none; cursor:pointer; color:#8b95a1; font-size:15px; padding:2px 6px; line-height:1;
+    border-radius:3px;
+  }
+  .icon-btn:hover{color:#c0392b; background:#fdecea;}
+  .icon-btn.move:hover{color:var(--blueprint); background:#eaf1f5;}
+  .layer-controls{display:flex; gap:8px; flex-wrap:wrap;}
+  .layer-controls .field{min-width:120px;}
+  .layer-result{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px;
+    color:var(--ink-soft);
+    margin-top:8px;
+    text-align:right;
+  }
+  .layer-result b{color:var(--blueprint-deep);}
+
+  .add-row{display:flex; gap:8px;}
+  .btn{
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:600;
+    font-size:12.5px;
+    letter-spacing:0.4px;
+    padding:9px 14px;
+    border-radius:3px;
+    border:1.5px solid var(--ink);
+    background:#fff;
+    color:var(--ink);
+    cursor:pointer;
+    text-transform:uppercase;
+  }
+  .btn:hover{background:var(--ink); color:#fff;}
+  .btn.primary{background:var(--blueprint-deep); color:#fff; border-color:var(--blueprint-deep);}
+  .btn.primary:hover{background:var(--blueprint); border-color:var(--blueprint);}
+  .btn.small{padding:6px 10px; font-size:11px;}
+
+  /* Presets */
+  .preset-grid{display:flex; flex-wrap:wrap; gap:8px;}
+  .preset-chip{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px;
+    padding:7px 10px;
+    border:1.3px solid var(--paper-line);
+    background:var(--paper);
+    border-radius:20px;
+    cursor:pointer;
+    color:var(--ink-soft);
+  }
+  .preset-chip:hover{border-color:var(--blueprint); color:var(--blueprint); background:#eaf1f5;}
+
+  /* Right column: section diagram + results */
+  .section-diagram{
+    background: linear-gradient(180deg,#eef3f6,#fff);
+    border:1px solid #cdd3d9;
+    border-radius:3px;
+    padding:10px;
+    margin-bottom:12px;
+  }
+  .side-labels{
+    display:flex; justify-content:space-between;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    color:var(--ink-soft);
+    text-transform:uppercase;
+    letter-spacing:0.6px;
+    margin-bottom:4px;
+    padding:0 4px;
+  }
+
+  .results-card{
+    background:var(--blueprint-deep);
+    color:#fff;
+    border-radius:3px;
+    padding:18px;
+    margin-bottom:14px;
+  }
+  .results-card .u-main{
+    display:flex; align-items:baseline; gap:10px; margin-bottom:6px;
+  }
+  .results-card .u-value{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:42px;
+    font-weight:700;
+    line-height:1;
+    color:#ffd28a;
+  }
+  .results-card .u-unit{font-size:13px; color:#c9d6de;}
+  .results-card .u-sub{font-family:'IBM Plex Mono', monospace; font-size:13px; color:#c9d6de; margin-top:6px;}
+  .results-table{
+    width:100%;
+    margin-top:14px;
+    border-collapse:collapse;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+  }
+  .results-table td{padding:5px 0; border-bottom:1px solid rgba(255,255,255,0.12);}
+  .results-table td:last-child{text-align:right; font-weight:600;}
+  .results-table tr:last-child td{border-bottom:none; padding-top:8px;}
+
+  .surface-note{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--ink-soft);
+    background:var(--paper);
+    border:1px dashed var(--paper-line);
+    border-radius:3px;
+    padding:10px 12px;
+    line-height:1.6;
+  }
+
+  footer{
+    margin-top:10px;
+    font-size:11.5px;
+    color:var(--ink-soft);
+    text-align:center;
+    line-height:1.6;
+  }
+
+  ::-webkit-scrollbar{width:8px; height:8px;}
+  ::-webkit-scrollbar-thumb{background:#c8cdd3; border-radius:4px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="title-block">
+    <div class="left">
+      <h1>U-VALUE CALCULATOR</h1>
+      <p>Build up a wall or roof assembly layer-by-layer and get the thermal transmittance (U-value), following the ECBC (Energy Conservation Building Code) surface-resistance method.</p>
+    </div>
+    <div class="stamp">METHOD: BEE ECBC USER GUIDE<br>CALC REF: U = 1 / ΣR</div>
+  </header>
+
+  <div class="grid">
+
+    <!-- LEFT COLUMN: BUILDER -->
+    <div>
+      <div class="panel">
+        <h2>01 · Assembly Setup</h2>
+        <div class="toggle-row">
+          <button class="toggle-btn active" data-type="wall" id="btnWall">Wall</button>
+          <button class="toggle-btn" data-type="roof" id="btnRoof">Roof</button>
+        </div>
+
+        <div class="field-row" id="climateRow" style="display:none;">
+          <div class="field">
+            <label>Climate Zone (affects internal surface resistance, R<sub>si</sub>, for roofs)</label>
+            <select id="climateSelect">
+              <option value="std">Composite / Hot-Dry / Warm-Humid / Temperate (R_si = 0.17)</option>
+              <option value="cold">Cold Climate (R_si = 0.10)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="surface-note" id="surfaceNote"></div>
+      </div>
+
+      <div class="panel">
+        <h2>02 · Layers (outside → inside)</h2>
+        <div id="layerList"></div>
+        <div class="add-row">
+          <button class="btn primary" id="addLayerBtn">+ Add Layer</button>
+          <button class="btn" id="clearBtn">Clear All</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>03 · Reference Assemblies (from ECBC worked examples)</h2>
+        <div class="preset-grid" id="presetGrid"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: DIAGRAM + RESULTS -->
+    <div>
+      <div class="panel">
+        <h2>Assembly Cross-Section</h2>
+        <div class="side-labels"><span>← Exterior</span><span>Interior →</span></div>
+        <div class="section-diagram">
+          <svg id="sectionSvg" width="100%" height="180" viewBox="0 0 500 180" preserveAspectRatio="none"></svg>
+        </div>
+        <div class="surface-note" id="thicknessNote"></div>
+      </div>
+
+      <div class="results-card">
+        <div class="u-main">
+          <div class="u-value" id="uValueW">—</div>
+          <div class="u-unit">W/m²·K</div>
+        </div>
+        <div class="u-sub" id="uValueBtu">— Btu/hr·ft²·°F</div>
+        <table class="results-table" id="resultsTable"></table>
+      </div>
+
+      <div class="panel" style="margin-bottom:0;">
+        <h2>What this means</h2>
+        <p style="font-size:12.5px; color:var(--ink-soft); line-height:1.6; margin:0;">
+          U-value is the rate of heat transfer through the assembly per unit area per degree of temperature difference.
+          <b>Lower U = better insulation.</b> It is the reciprocal of total thermal resistance (R), which is the sum
+          of each layer's resistance (thickness ÷ conductivity) plus the interior and exterior air-film resistances.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Material properties (density, thermal conductivity k, specific heat) and surface-film resistance values are adapted from the
+    Bureau of Energy Efficiency, Energy Conservation Building Code (ECBC) User Guide, New Delhi. Provided for preliminary design
+    and educational reference — confirm against project-specific test data or the current ECBC edition for compliance submissions.
+  </footer>
+
+</div>
+
+<script>
+/* ---------------------------------------------------------
+   MATERIALS DATABASE (ECBC User Guide reference values)
+--------------------------------------------------------- */
+const MATERIALS = [{"name": "Solid burnt clay brick", "density": 1920, "k": 0.98, "shc": 0.8, "cat": "Bricks & Blocks"}, {"name": "Solid burnt clay brick", "density": 1760, "k": 0.85, "shc": null, "cat": "Bricks & Blocks"}, {"name": "Solid burnt clay brick", "density": 1600, "k": 0.74, "shc": null, "cat": "Bricks & Blocks"}, {"name": "Solid burnt clay brick", "density": 1440, "k": 0.62, "shc": null, "cat": "Bricks & Blocks"}, {"name": "Resource efficient (hollow) brick", "density": 1520, "k": 0.631, "shc": 0.65, "cat": "Bricks & Blocks"}, {"name": "Fly ash brick", "density": 1650, "k": 0.856, "shc": 0.93, "cat": "Bricks & Blocks"}, {"name": "Solid concrete block 25/50", "density": 2427, "k": 1.396, "shc": 0.2, "cat": "Bricks & Blocks"}, {"name": "Aerated autoclaved concrete (AAC) block", "density": 642, "k": 0.184, "shc": 1.24, "cat": "Bricks & Blocks"}, {"name": "Cement stabilized soil block (CSEB)", "density": 1700, "k": 1.026, "shc": 1.03, "cat": "Bricks & Blocks"}, {"name": "Cement stabilized soil block (CSEB)", "density": 1800, "k": 1.201, "shc": 1.07, "cat": "Bricks & Blocks"}, {"name": "Cement stabilized soil block (CSEB)", "density": 1900, "k": 1.303, "shc": 1.07, "cat": "Bricks & Blocks"}, {"name": "Dense concrete", "density": 2410, "k": 1.74, "shc": 0.88, "cat": "Concrete, Cement & Plaster"}, {"name": "Reinforced concrete cement (RCC)", "density": 2288, "k": 1.58, "shc": 0.88, "cat": "Concrete, Cement & Plaster"}, {"name": "Brick tile", "density": 1892, "k": 0.798, "shc": 0.88, "cat": "Bricks & Blocks"}, {"name": "Lime concrete", "density": 1646, "k": 0.73, "shc": 0.88, "cat": "Concrete, Cement & Plaster"}, {"name": "Mud Phuska", "density": 1622, "k": 0.519, "shc": 0.88, "cat": "Concrete, Cement & Plaster"}, {"name": "Cement mortar", "density": 1648, "k": 0.719, "shc": 0.92, "cat": "Concrete, Cement & Plaster"}, {"name": "Cement plaster", "density": 1762, "k": 0.721, "shc": 0.84, "cat": "Concrete, Cement & Plaster"}, {"name": "Gypsum plaster", "density": 1120, "k": 0.512, "shc": 0.96, "cat": "Concrete, Cement & Plaster"}, {"name": "Cellular concrete", "density": 704, "k": 0.188, "shc": 1.05, "cat": "Concrete, Cement & Plaster"}, {"name": "AC sheet", "density": 1520, "k": 0.245, "shc": 0.84, "cat": "Other Materials"}, {"name": "GI sheet", "density": 7520, "k": 61.06, "shc": 0.5, "cat": "Other Materials"}, {"name": "Timber", "density": 480, "k": 0.072, "shc": 1.68, "cat": "Other Materials"}, {"name": "Timber", "density": 720, "k": 0.144, "shc": 1.68, "cat": "Other Materials"}, {"name": "Plywood", "density": 640, "k": 0.174, "shc": 1.76, "cat": "Other Materials"}, {"name": "Glass", "density": 2350, "k": 0.814, "shc": 0.88, "cat": "Other Materials"}, {"name": "Tar felt (2.3 kg/m\u00b2)", "density": null, "k": 0.479, "shc": 0.88, "cat": "Other Materials"}, {"name": "Solid concrete block 30/60", "density": 2349, "k": 1.411, "shc": 0.3, "cat": "Bricks & Blocks"}, {"name": "Aerated autoclaved concrete (AAC) block", "density": 642, "k": 1.084, "shc": 1.24, "cat": "Bricks & Blocks"}, {"name": "Cement stabilized soil block (CSEB)", "density": 1700, "k": 1.168, "shc": 1.23, "cat": "Bricks & Blocks"}, {"name": "Cement stabilized soil block (CSEB)", "density": 1800, "k": 1.303, "shc": 1.07, "cat": "Bricks & Blocks"}, {"name": "Reinforced concrete cement (RCC)", "density": 2335, "k": 1.58, "shc": 0.88, "cat": "Concrete, Cement & Plaster"}, {"name": "Liquid Phuska", "density": 1090, "k": 0.519, "shc": 0.96, "cat": "Concrete, Cement & Plaster"}, {"name": "Timber", "density": 720, "k": 0.174, "shc": 1.68, "cat": "Other Materials"}, {"name": "Plywood", "density": 960, "k": 0.144, "shc": 1.68, "cat": "Other Materials"}, {"name": "Tar felt (2.3 kg/m2)", "density": 480, "k": 0.879, "shc": 0.88, "cat": "Other Materials"}, {"name": "Expanded polystyrene", "density": 16, "k": 0.038, "shc": 1.34, "cat": "Insulation"}, {"name": "Expanded polystyrene", "density": 24, "k": 0.056, "shc": 1.34, "cat": "Insulation"}, {"name": "Expanded polystyrene", "density": 34, "k": 0.055, "shc": 1.34, "cat": "Insulation"}, {"name": "Foam glass", "density": 127, "k": 0.05, "shc": 0.75, "cat": "Insulation"}, {"name": "Foam glass", "density": 160, "k": 0.06, "shc": 0.92, "cat": "Insulation"}, {"name": "Foam concrete", "density": 320, "k": 0.36, "shc": 0.92, "cat": "Concrete, Cement & Plaster"}, {"name": "Foam concrete", "density": 420, "k": 0.43, "shc": 0.92, "cat": "Concrete, Cement & Plaster"}, {"name": "Foam concrete", "density": 704, "k": 0.149, "shc": 0.92, "cat": "Concrete, Cement & Plaster"}, {"name": "Cork slab", "density": 188, "k": 0.08, "shc": 0.96, "cat": "Insulation"}, {"name": "Cork slab", "density": 192, "k": 0.08, "shc": 0.96, "cat": "Insulation"}, {"name": "Rock wool (unbonded)", "density": 92, "k": 0.025, "shc": 0.92, "cat": "Insulation"}, {"name": "Rock wool (unbonded)", "density": 160, "k": 0.04, "shc": 0.92, "cat": "Insulation"}, {"name": "Mineral wool (unbonded)", "density": 73.5, "k": 0.055, "shc": 0.92, "cat": "Insulation"}, {"name": "Glass wool (unbonded)", "density": 160, "k": 0.04, "shc": 0.92, "cat": "Insulation"}, {"name": "Glass wool (unbonded)", "density": 189, "k": 0.03, "shc": 0.92, "cat": "Insulation"}, {"name": "Resin bonded mineral wool", "density": 64, "k": 0.038, "shc": 1, "cat": "Insulation"}, {"name": "Resin bonded mineral wool", "density": 99, "k": 0.036, "shc": 1, "cat": "Insulation"}, {"name": "Resin bonded mineral wool", "density": 16, "k": 0.04, "shc": 1, "cat": "Insulation"}, {"name": "Resin bonded mineral wool", "density": 24, "k": 0.036, "shc": 1, "cat": "Insulation"}, {"name": "Exfoliated vermiculite (loose)", "density": 264, "k": 0.069, "shc": 1, "cat": "Insulation"}, {"name": "Asbestos mill board", "density": 1397, "k": 0.249, "shc": 0.84, "cat": "Boards & Panels"}, {"name": "Hard board", "density": 979, "k": 0.042, "shc": 1.42, "cat": "Boards & Panels"}, {"name": "Straw board", "density": 310, "k": 0.057, "shc": 1.35, "cat": "Boards & Panels"}, {"name": "Soft board", "density": 324, "k": 0.05, "shc": 1.3, "cat": "Boards & Panels"}, {"name": "Soft board", "density": 249, "k": 0.057, "shc": 1.3, "cat": "Boards & Panels"}, {"name": "Wall board", "density": 462, "k": 0.1, "shc": 1.26, "cat": "Boards & Panels"}, {"name": "Chip board", "density": 360, "k": 0.106, "shc": 1.26, "cat": "Boards & Panels"}, {"name": "Chip board (perforated)", "density": 352, "k": 0.106, "shc": 1.26, "cat": "Boards & Panels"}, {"name": "Particle board", "density": 750, "k": 0.06, "shc": 1.42, "cat": "Boards & Panels"}, {"name": "Coconut pith insulation board", "density": 520, "k": 0.067, "shc": 1.09, "cat": "Boards & Panels"}, {"name": "Jute fibre", "density": 329, "k": 0.061, "shc": 1.09, "cat": "Boards & Panels"}, {"name": "Wood wool board (bonded with cement)", "density": 398, "k": 0.081, "shc": 1.13, "cat": "Boards & Panels"}, {"name": "Wood wool board (bonded with cement)", "density": 674, "k": 0.108, "shc": 1.13, "cat": "Boards & Panels"}, {"name": "Cork board", "density": 97, "k": 0.055, "shc": 1, "cat": "Insulation"}, {"name": "Saw dust", "density": 188, "k": 0.051, "shc": 1, "cat": "Boards & Panels"}, {"name": "Rice husk", "density": 220, "k": 0.054, "shc": 1, "cat": "Boards & Panels"}, {"name": "Jute felt", "density": 291, "k": 0.042, "shc": 0.88, "cat": "Boards & Panels"}, {"name": "Closed cell flexible elastomeric foam - NBR", "density": null, "k": 0.043, "shc": 1.2, "cat": "Insulation"}, {"name": "Polyurethane foam (low density)", "density": 7, "k": 0.042, "shc": 1.47, "cat": "Insulation"}, {"name": "Polyurethane foam (low density, formed)", "density": 40, "k": 0.026, "shc": 1.47, "cat": "Insulation"}];
+
+MATERIALS.forEach((m,i)=>m.id=i);
+
+const CAT_COLORS = {
+  "Bricks & Blocks":"#c98a5c",
+  "Concrete, Cement & Plaster":"#9aa3ab",
+  "Insulation":"#f2c14e",
+  "Boards & Panels":"#a67c52",
+  "Other Materials":"#7fa6c9",
+  "custom":"#8e7cc3"
+};
+
+/* ---------------------------------------------------------
+   SURFACE RESISTANCE TABLE (ECBC Table 6)
+--------------------------------------------------------- */
+const SURFACE = {
+  wall: { rsi: 0.13, rse: 0.04 },
+  roof_std: { rsi: 0.17, rse: 0.04 },
+  roof_cold: { rsi: 0.10, rse: 0.04 }
+};
+
+/* ---------------------------------------------------------
+   STATE
+--------------------------------------------------------- */
+let assemblyType = 'wall'; // 'wall' | 'roof'
+let climate = 'std'; // 'std' | 'cold'
+let layers = []; // {uid, materialId (or 'custom'), thicknessMM, customK, customName}
+let uidCounter = 0;
+
+function newLayer(materialId, thicknessMM){
+  return {uid: uidCounter++, materialId: materialId, thicknessMM: thicknessMM, customK: 0.5, customName:'Custom material'};
+}
+
+/* default starting assembly: simple plaster-brick-plaster wall */
+function loadDefault(){
+  layers = [
+    newLayer(17, 15), // Cement plaster
+    newLayer(5, 230),  // Fly ash brick
+    newLayer(17, 15)  // Cement plaster
+  ];
+}
+loadDefault();
+
+/* ---------------------------------------------------------
+   PRESETS (from the ECBC worked examples in the reference sheet)
+--------------------------------------------------------- */
+const PRESETS = [
+  {
+    label: "AAC Wall (U≈0.77)",
+    type: "wall",
+    layers: [
+      {mat:'Cement plaster', k:0.721, mm:15},
+      {mat:'AAC block', k:0.184, mm:200},
+      {mat:'Cement plaster', k:0.721, mm:15}
+    ]
+  },
+  {
+    label: "Fly Ash Brick Wall (U≈1.73)",
+    type: "wall",
+    layers: [
+      {mat:'Cement mortar', k:0.719, mm:15},
+      {mat:'Fly ash brick', k:0.62, mm:230},
+      {mat:'Cement mortar', k:0.719, mm:12}
+    ]
+  },
+  {
+    label: "RCC + Stone + Rock Wool Wall (U≈0.37)",
+    type: "wall",
+    layers: [
+      {mat:'Gypsum plaster', k:0.512, mm:25},
+      {mat:'Stone cladding', k:3.98, mm:50},
+      {mat:'Rock wool (unbonded)', k:0.04, mm:100}
+    ]
+  },
+  {
+    label: "PUR Sandwich Wall (U≈0.45)",
+    type: "wall",
+    layers: [
+      {mat:'Polyurethane foam (PUR)', k:0.026, mm:50},
+      {mat:'Precast panel (CMU)', k:1.396, mm:150},
+      {mat:'Gypsum board', k:0.512, mm:12}
+    ]
+  },
+  {
+    label: "RCC Roof, bare (U≈3.28)",
+    type: "roof",
+    layers: [
+      {mat:'Reinforced concrete cement (RCC)', k:1.58, mm:150}
+    ]
+  },
+  {
+    label: "RCC + PUF Insulated Roof (U≈0.46)",
+    type: "roof",
+    layers: [
+      {mat:'Cement mortar (insulating)', k:0.2, mm:70},
+      {mat:'Polyurethane foam (PUF)', k:0.026, mm:40},
+      {mat:'Reinforced concrete cement (RCC)', k:1.58, mm:150}
+    ]
+  },
+  {
+    label: "PUF + Metal Deck Roof (U≈1.02)",
+    type: "roof",
+    layers: [
+      {mat:'Polyurethane foam (PUF)', k:0.026, mm:20},
+      {mat:'GI sheet', k:61.06, mm:20}
+    ]
+  },
+  {
+    label: "EPS Terrace Roof (U≈0.40)",
+    type: "roof",
+    layers: [
+      {mat:'Cement mortar', k:0.719, mm:75},
+      {mat:'Brick batt coba', k:5, mm:100},
+      {mat:'Expanded polystyrene', k:0.038, mm:75},
+      {mat:'Reinforced concrete cement (RCC)', k:1.58, mm:300}
+    ]
+  }
+];
+
+/* ---------------------------------------------------------
+   RENDERING
+--------------------------------------------------------- */
+function findMaterial(id){
+  return MATERIALS.find(m=>m.id===id);
+}
+
+function el(tag, cls, html){
+  const e = document.createElement(tag);
+  if(cls) e.className = cls;
+  if(html!==undefined) e.innerHTML = html;
+  return e;
+}
+
+function buildMaterialSelect(selectedId){
+  const sel = document.createElement('select');
+  sel.className='matSelect';
+
+  const customOpt = document.createElement('option');
+  customOpt.value = 'custom';
+  customOpt.textContent = '— Custom material (enter k manually) —';
+  sel.appendChild(customOpt);
+
+  const cats = [...new Set(MATERIALS.map(m=>m.cat))];
+  cats.forEach(cat=>{
+    const grp = document.createElement('optgroup');
+    grp.label = cat;
+    MATERIALS.filter(m=>m.cat===cat).forEach(m=>{
+      const opt = document.createElement('option');
+      opt.value = m.id;
+      const densTxt = m.density ? `, ${m.density} kg/m³` : '';
+      opt.textContent = `${m.name} (k=${m.k}${densTxt})`;
+      grp.appendChild(opt);
+    });
+    sel.appendChild(grp);
+  });
+
+  sel.value = selectedId===null ? 'custom' : selectedId;
+  return sel;
+}
+
+function renderLayers(){
+  const list = document.getElementById('layerList');
+  list.innerHTML = '';
+
+  if(layers.length===0){
+    list.appendChild(el('div','surface-note','No layers yet — click “+ Add Layer” to start building your assembly.'));
+  }
+
+  layers.forEach((layer, idx)=>{
+    const card = el('div','layer-card');
+    card.dataset.uid = layer.uid;
+
+    const head = el('div','layer-head');
+    const titleWrap = el('div');
+    titleWrap.innerHTML = `<span class="layer-num">${idx+1}</span><span class="layer-title">LAYER ${idx+1}</span>`;
+    head.appendChild(titleWrap);
+
+    const btns = el('div');
+    const upBtn = el('button','icon-btn move','↑'); upBtn.title='Move up';
+    const downBtn = el('button','icon-btn move','↓'); downBtn.title='Move down';
+    const delBtn = el('button','icon-btn','✕'); delBtn.title='Remove layer';
+    upBtn.onclick=()=>{ if(idx>0){ [layers[idx-1],layers[idx]]=[layers[idx],layers[idx-1]]; renderAll(); } };
+    downBtn.onclick=()=>{ if(idx<layers.length-1){ [layers[idx+1],layers[idx]]=[layers[idx],layers[idx+1]]; renderAll(); } };
+    delBtn.onclick=()=>{ layers = layers.filter(l=>l.uid!==layer.uid); renderAll(); };
+    btns.appendChild(upBtn); btns.appendChild(downBtn); btns.appendChild(delBtn);
+    head.appendChild(btns);
+    card.appendChild(head);
+
+    const ctrl = el('div','layer-controls');
+
+    const matField = el('div','field');
+    matField.appendChild(el('label','','Material'));
+    const matSelect = buildMaterialSelect(layer.materialId);
+    matSelect.onchange = (e)=>{
+      layer.materialId = e.target.value==='custom' ? 'custom' : parseInt(e.target.value);
+      renderAll();
+    };
+    matField.appendChild(matSelect);
+    ctrl.appendChild(matField);
+
+    if(layer.materialId==='custom'){
+      const nameField = el('div','field');
+      nameField.appendChild(el('label','','Name'));
+      const nameInput = document.createElement('input');
+      nameInput.type='text'; nameInput.value = layer.customName;
+      nameInput.oninput = (e)=>{ layer.customName = e.target.value; renderResults(); renderDiagram(); };
+      nameField.appendChild(nameInput);
+      ctrl.appendChild(nameField);
+
+      const kField = el('div','field');
+      kField.appendChild(el('label','','k value (W/m·K)'));
+      const kInput = document.createElement('input');
+      kInput.type='number'; kInput.step='0.001'; kInput.min='0.001'; kInput.value = layer.customK;
+      kInput.oninput = (e)=>{ layer.customK = parseFloat(e.target.value)||0.001; renderResults(); renderDiagram(); };
+      kField.appendChild(kInput);
+      ctrl.appendChild(kField);
+    }
+
+    const thickField = el('div','field');
+    thickField.appendChild(el('label','','Thickness (mm)'));
+    const thickInput = document.createElement('input');
+    thickInput.type='number'; thickInput.min='1'; thickInput.step='1'; thickInput.value = layer.thicknessMM;
+    thickInput.oninput = (e)=>{ layer.thicknessMM = parseFloat(e.target.value)||1; renderResults(); renderDiagram(); };
+    thickField.appendChild(thickInput);
+    ctrl.appendChild(thickField);
+
+    card.appendChild(ctrl);
+
+    const kVal = layer.materialId==='custom' ? layer.customK : findMaterial(layer.materialId).k;
+    const rVal = (layer.thicknessMM/1000) / kVal;
+    const resultLine = el('div','layer-result',`R = ${(layer.thicknessMM/1000).toFixed(3)} m ÷ ${kVal.toFixed(3)} W/m·K = <b>${rVal.toFixed(4)} m²·K/W</b>`);
+    card.appendChild(resultLine);
+
+    list.appendChild(card);
+  });
+}
+
+function computeResults(){
+  const surf = assemblyType==='wall' ? SURFACE.wall : (climate==='cold' ? SURFACE.roof_cold : SURFACE.roof_std);
+  let sumR = 0;
+  const rows = [];
+  layers.forEach((layer,idx)=>{
+    const kVal = layer.materialId==='custom' ? layer.customK : findMaterial(layer.materialId).k;
+    const name = layer.materialId==='custom' ? (layer.customName||'Custom material') : findMaterial(layer.materialId).name;
+    const rVal = (layer.thicknessMM/1000) / kVal;
+    sumR += rVal;
+    rows.push({name, mm:layer.thicknessMM, k:kVal, r:rVal});
+  });
+  const totalR = sumR + surf.rsi + surf.rse;
+  const uW = totalR>0 ? 1/totalR : 0;
+  const uBtu = uW * 0.176110;
+  return {rows, surf, sumR, totalR, uW, uBtu};
+}
+
+function renderResults(){
+  const res = computeResults();
+
+  document.getElementById('uValueW').textContent = res.uW>0 ? res.uW.toFixed(3) : '—';
+  document.getElementById('uValueBtu').textContent = res.uW>0 ? `${res.uBtu.toFixed(4)} Btu/hr·ft²·°F` : '—';
+
+  const table = document.getElementById('resultsTable');
+  table.innerHTML = '';
+  const addRow = (label, val, bold)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${label}</td><td>${val}</td>`;
+    if(bold) tr.style.fontWeight='700';
+    table.appendChild(tr);
+  };
+  addRow('Σ Layer resistance', `${res.sumR.toFixed(4)} m²·K/W`);
+  addRow(`R_si (interior surface)`, `${res.surf.rsi.toFixed(2)} m²·K/W`);
+  addRow(`R_se (exterior surface)`, `${res.surf.rse.toFixed(2)} m²·K/W`);
+  addRow('Total R value', `${res.totalR.toFixed(4)} m²·K/W`, true);
+
+  document.getElementById('thicknessNote').innerHTML =
+    `Total build-up thickness: <b>${layers.reduce((s,l)=>s+l.thicknessMM,0)} mm</b> across ${layers.length} layer${layers.length!==1?'s':''}.`;
+}
+
+function renderDiagram(){
+  const svg = document.getElementById('sectionSvg');
+  svg.innerHTML='';
+  const W = 500, H = 180;
+  const filmW = 22;
+  const usableW = W - filmW*2;
+  const totalMM = layers.reduce((s,l)=>s+l.thicknessMM,0) || 1;
+
+  const ns = "http://www.w3.org/2000/svg";
+  function rect(x,y,w,h,fill,extra){
+    const r = document.createElementNS(ns,'rect');
+    r.setAttribute('x',x); r.setAttribute('y',y); r.setAttribute('width',w); r.setAttribute('height',h);
+    r.setAttribute('fill',fill);
+    if(extra) Object.entries(extra).forEach(([k,v])=>r.setAttribute(k,v));
+    svg.appendChild(r);
+    return r;
+  }
+  function text(x,y,str,size,color,anchor,rotate){
+    const t = document.createElementNS(ns,'text');
+    t.setAttribute('x',x); t.setAttribute('y',y);
+    t.setAttribute('font-size',size||9);
+    t.setAttribute('fill',color||'#1c2b3a');
+    t.setAttribute('font-family','IBM Plex Mono, monospace');
+    t.setAttribute('text-anchor',anchor||'middle');
+    if(rotate) t.setAttribute('transform',`rotate(${rotate} ${x} ${y})`);
+    t.textContent = str;
+    svg.appendChild(t);
+  }
+
+  const topY = 26, bandH = 110, bottomY = topY+bandH;
+
+  // exterior air film (hatched)
+  rect(0, topY, filmW, bandH, '#dfe6ea', {stroke:'#9aa7b2','stroke-width':0.6});
+  for(let i=0;i<bandH;i+=8){
+    const l = document.createElementNS(ns,'line');
+    l.setAttribute('x1',2); l.setAttribute('y1',topY+i); l.setAttribute('x2',filmW-2); l.setAttribute('y2',topY+i+8);
+    l.setAttribute('stroke','#9aa7b2'); l.setAttribute('stroke-width',0.6);
+    svg.appendChild(l);
+  }
+  text(filmW/2, topY-8, 'ext. air', 8, '#8b95a1');
+
+  let cursor = filmW;
+  layers.forEach((layer,idx)=>{
+    const kVal = layer.materialId==='custom' ? layer.customK : findMaterial(layer.materialId).k;
+    const name = layer.materialId==='custom' ? (layer.customName||'Custom') : findMaterial(layer.materialId).name;
+    const cat = layer.materialId==='custom' ? 'custom' : findMaterial(layer.materialId).cat;
+    const w = Math.max((layer.thicknessMM/totalMM)*usableW, 8);
+    const color = CAT_COLORS[cat] || '#999';
+    rect(cursor, topY, w, bandH, color, {stroke:'#1c2b3a','stroke-width':0.6, 'fill-opacity':0.85});
+
+    // thickness label above
+    text(cursor + w/2, topY-8, `${layer.thicknessMM}mm`, 8.5, '#1c2b3a');
+
+    // name label - rotated if narrow
+    const shortName = name.length>16 ? name.slice(0,15)+'…' : name;
+    if(w>34){
+      text(cursor + w/2, bottomY+16, shortName, 7.6, '#4b5b6b');
+    } else {
+      text(cursor + w/2, bottomY+14, shortName, 7.2, '#4b5b6b', 'start', 55);
+    }
+
+    cursor += w;
+  });
+
+  // interior air film
+  rect(cursor, topY, filmW, bandH, '#dfe6ea', {stroke:'#9aa7b2','stroke-width':0.6});
+  for(let i=0;i<bandH;i+=8){
+    const l = document.createElementNS(ns,'line');
+    l.setAttribute('x1',cursor+2); l.setAttribute('y1',topY+i); l.setAttribute('x2',cursor+filmW-2); l.setAttribute('y2',topY+i+8);
+    l.setAttribute('stroke','#9aa7b2'); l.setAttribute('stroke-width',0.6);
+    svg.appendChild(l);
+  }
+  text(cursor+filmW/2, topY-8, 'int. air', 8, '#8b95a1');
+}
+
+function renderSurfaceNote(){
+  const note = document.getElementById('surfaceNote');
+  if(assemblyType==='wall'){
+    note.innerHTML = `<b>Wall — all climate zones:</b> R_si = 0.13 m²·K/W (interior) · R_se = 0.04 m²·K/W (exterior)`;
+  } else {
+    const rsi = climate==='cold' ? 0.10 : 0.17;
+    note.innerHTML = `<b>Roof — ${climate==='cold' ? 'Cold Climate' : 'Composite / Hot-Dry / Warm-Humid / Temperate'}:</b> R_si = ${rsi.toFixed(2)} m²·K/W (interior) · R_se = 0.04 m²·K/W (exterior)`;
+  }
+}
+
+function renderAll(){
+  renderLayers();
+  renderResults();
+  renderDiagram();
+  renderSurfaceNote();
+}
+
+/* ---------------------------------------------------------
+   PRESETS UI
+--------------------------------------------------------- */
+function renderPresets(){
+  const grid = document.getElementById('presetGrid');
+  grid.innerHTML='';
+  PRESETS.forEach(p=>{
+    const chip = el('div','preset-chip', p.label);
+    chip.onclick = ()=>{
+      assemblyType = p.type;
+      document.getElementById('btnWall').classList.toggle('active', assemblyType==='wall');
+      document.getElementById('btnRoof').classList.toggle('active', assemblyType==='roof');
+      document.getElementById('climateRow').style.display = assemblyType==='roof' ? 'flex' : 'none';
+
+      layers = p.layers.map(L=>{
+        const layer = newLayer('custom', L.mm);
+        layer.customK = L.k;
+        layer.customName = L.mat;
+        return layer;
+      });
+      renderAll();
+    };
+    grid.appendChild(chip);
+  });
+}
+
+/* ---------------------------------------------------------
+   EVENTS
+--------------------------------------------------------- */
+document.getElementById('btnWall').onclick = ()=>{
+  assemblyType='wall';
+  document.getElementById('btnWall').classList.add('active');
+  document.getElementById('btnRoof').classList.remove('active');
+  document.getElementById('climateRow').style.display='none';
+  renderAll();
+};
+document.getElementById('btnRoof').onclick = ()=>{
+  assemblyType='roof';
+  document.getElementById('btnRoof').classList.add('active');
+  document.getElementById('btnWall').classList.remove('active');
+  document.getElementById('climateRow').style.display='flex';
+  renderAll();
+};
+document.getElementById('climateSelect').onchange = (e)=>{
+  climate = e.target.value;
+  renderAll();
+};
+document.getElementById('addLayerBtn').onclick = ()=>{
+  layers.push(newLayer(17, 20));
+  renderAll();
+};
+document.getElementById('clearBtn').onclick = ()=>{
+  layers = [];
+  renderAll();
+};
+
+/* ---------------------------------------------------------
+   INIT
+--------------------------------------------------------- */
+renderPresets();
+renderAll();
+</script>
+</body>
+</html>
